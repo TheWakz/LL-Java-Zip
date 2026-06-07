@@ -4,8 +4,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import software.coley.lljzip.format.compression.ZipCompressions;
+import software.coley.lljzip.format.model.CentralDirectoryFileHeader;
 import software.coley.lljzip.format.model.LocalFileHeader;
 import software.coley.lljzip.format.model.ZipArchive;
 import software.coley.lljzip.format.model.ZipPart;
@@ -14,13 +18,17 @@ import software.coley.lljzip.util.MemorySegmentUtil;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.zip.ZipEntry;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -157,7 +165,7 @@ public class PartParseTests {
 	@Test
 	public void testEocdMisleading() {
 		try {
-			// This sample has a few tricks which historically have causes some problems
+			// This sample has a few tricks which historically have caused some problems
 			// for our EOCD detection heuristics. We expect to see the manifest and class file, even though the EOCD is misleading.
 			// There are other 'files' in the jar, but they're junk.
 			ZipArchive zip = ZipIO.readJvm(Paths.get("src/test/resources/sample-eocd-oob.jar"));
@@ -165,6 +173,48 @@ public class PartParseTests {
 			assertTrue(hasFile(zip, "META-INF/MANIFEST.MF"));
 			assertTrue(hasFile(zip, "Hello.class/"));
 		} catch (IOException ex) {
+			fail(ex);
+		}
+	}
+
+	@Test
+	public void testDuplicateManifest() {
+		try {
+			// This sample is similar in that it has a number of tricks which historically have caused some problems.
+			// There's a lot of junk in here like the other sample, but we should still be able to see the manifest and class file.
+			ZipArchive zip = ZipIO.readJvm(Paths.get("src/test/resources/sample-duplicate-manifest-oob.jar"));
+			assertNotNull(zip);
+			assertTrue(hasFile(zip, "META-INF/MANIFEST.MF"));
+			assertTrue(hasFile(zip, "Hello.class/"));
+
+			// Check for code in the class files. If we fell for the trap classes, then we won't have any code to visit.
+			AtomicBoolean visitedCode = new AtomicBoolean(false);
+			List<LocalFileHeader> localFiles = zip.getNameFilteredLocalFiles(n -> n.contains(".class"));
+			for (LocalFileHeader localFile : localFiles) {
+				try {
+					byte[] byteArray = MemorySegmentUtil.toByteArray(ZipCompressions.decompress(localFile));
+					ClassReader cr = new ClassReader(byteArray);
+					cr.accept(new ClassVisitor(Opcodes.ASM9) {
+						@Override
+						public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+							return new MethodVisitor(Opcodes.ASM9) {
+								@Override
+								public void visitLdcInsn(Object value) {
+									visitedCode.set(true);
+								}
+							};
+						}
+					}, 0);
+				} catch (Throwable t) {
+					// There are junk classes in here, so I expect failures when trying to read them. That's fine, just ignore those.
+				}
+			}
+			assertTrue(visitedCode.get(), "One of the classes should have had code to visit, but none did. We fell for trap classes");
+
+			String manifest = MemorySegmentUtil.toString(ZipCompressions.decompress(zip.getLocalFileByName("META-INF/MANIFEST.MF")));
+			assertTrue(manifest.contains("Main-Class: Hello"), "Should resolve the executable manifest entry");
+			assertFalse(manifest.contains("com/sun/internal/Cleanup"), "Should not resolve the decoy manifest entry");
+ 		} catch (IOException ex) {
 			fail(ex);
 		}
 	}

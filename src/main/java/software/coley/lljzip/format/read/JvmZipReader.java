@@ -16,7 +16,9 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -102,6 +104,7 @@ public class JvmZipReader extends AbstractZipReader {
 		// Read local files
 		// - Set to prevent duplicate file header entries for the same offset
 		Set<Long> offsets = new HashSet<>();
+		Map<Long, LocalFileHeader> localFilesByOffset = new HashMap<>();
 		TreeSet<Long> entryOffsets = new TreeSet<>();
 		long earliestCdfh = Long.MAX_VALUE;
 		for (CentralDirectoryFileHeader directory : zip.getCentralDirectories()) {
@@ -132,6 +135,16 @@ public class JvmZipReader extends AbstractZipReader {
 			boolean isNewOffset = offsets.add(offset);
 			if (!isNewOffset) {
 				logger.warn("Central-Directory-File-Header's offset[{}] was already visited", offset);
+				LocalFileHeader existingFile = localFilesByOffset.get(offset);
+				if (existingFile != null) {
+					directory.link(existingFile);
+					existingFile.link(directory);
+					try {
+						existingFile.adoptLinkedCentralDirectoryValues();
+					} catch (ZipParseException ex) {
+						logger.warn("Failed to re-adopt Central-Directory-File-Header values for offset[{}]", offset, ex);
+					}
+				}
 				if (skipRevisitedCenToLocalLinks)
 					continue;
 			}
@@ -157,6 +170,7 @@ public class JvmZipReader extends AbstractZipReader {
 				file.link(directory);
 				file.adoptLinkedCentralDirectoryValues();
 				zip.addPart(file);
+				localFilesByOffset.put(offset, file);
 				postProcessLocalFileHeader(file);
 			} catch (Exception ex) {
 				logger.warn("Failed to read 'local file header' at offset[{}]", offset, ex);

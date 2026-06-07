@@ -166,6 +166,7 @@ public class ZipArchive implements AutoCloseable, Iterable<ZipPart> {
 					.filter(c -> nameFilter.test(c.getFileNameAsString()))
 					.map(CentralDirectoryFileHeader::getLinkedFileHeader)
 					.filter(Objects::nonNull)
+					.sorted(new OffsetComparator()) // Sort by offset to preserve file order
 					.collect(Collectors.toList());
 
 		// Fallback to using local entries

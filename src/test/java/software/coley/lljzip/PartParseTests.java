@@ -199,7 +199,7 @@ public class PartParseTests {
 						public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
 							return new MethodVisitor(Opcodes.ASM9) {
 								@Override
-								public void visitLdcInsn(Object value) {
+								public void visitMethodInsn(int opcode, String owner, String name, String descriptor, boolean isInterface) {
 									visitedCode.set(true);
 								}
 							};

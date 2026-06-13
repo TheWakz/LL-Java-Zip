@@ -34,7 +34,7 @@ public class EndOfCentralDirectory implements ZipPart, ZipRead {
 	// Zip spec elements
 	private int diskNumber;
 	private int centralDirectoryStartDisk;
-	private int centralDirectoryStartOffset; // TODO: spec and wikipedia articles disagree about purpose?
+	private int numEntriesOnThisDisk;
 	private int numEntries;
 	private long centralDirectorySize;
 	private long centralDirectoryOffset;
@@ -50,7 +50,7 @@ public class EndOfCentralDirectory implements ZipPart, ZipRead {
 		copy.offset = offset;
 		copy.diskNumber = diskNumber;
 		copy.centralDirectoryStartDisk = centralDirectoryStartDisk;
-		copy.centralDirectoryStartOffset = centralDirectoryStartOffset;
+		copy.numEntriesOnThisDisk = numEntriesOnThisDisk;
 		copy.numEntries = numEntries;
 		copy.centralDirectorySize = centralDirectorySize;
 		copy.centralDirectoryOffset = centralDirectoryOffset;
@@ -64,7 +64,7 @@ public class EndOfCentralDirectory implements ZipPart, ZipRead {
 		this.offset = offset;
 		diskNumber = readWord(data, offset + 4);
 		centralDirectoryStartDisk = readWord(data, offset + 6);
-		centralDirectoryStartOffset = readWord(data, offset + 8);
+		numEntriesOnThisDisk = readWord(data, offset + 8);
 		numEntries = readWord(data, offset + 10);
 		setCentralDirectorySize(readQuad(data, offset + 12));
 		setCentralDirectoryOffset(readQuad(data, offset + 16));
@@ -119,18 +119,18 @@ public class EndOfCentralDirectory implements ZipPart, ZipRead {
 	}
 
 	/**
-	 * @return ?
+	 * @return Number of central directory entries on this disk.
 	 */
-	public int getCentralDirectoryStartOffset() {
-		return centralDirectoryStartOffset;
+	public int getNumEntriesOnThisDisk() {
+		return numEntriesOnThisDisk;
 	}
 
 	/**
-	 * @param centralDirectoryStartOffset
-	 * 		?
+	 * @param numEntriesOnThisDisk
+	 * 		Number of central directory entries on this disk.
 	 */
-	public void setCentralDirectoryStartOffset(int centralDirectoryStartOffset) {
-		this.centralDirectoryStartOffset = centralDirectoryStartOffset;
+	public void setNumEntriesOnThisDisk(int numEntriesOnThisDisk) {
+		this.numEntriesOnThisDisk = numEntriesOnThisDisk;
 	}
 
 	/**
@@ -223,7 +223,7 @@ public class EndOfCentralDirectory implements ZipPart, ZipRead {
 				"offset=" + offset +
 				", diskNumber=" + diskNumber +
 				", centralDirectoryStartDisk=" + centralDirectoryStartDisk +
-				", centralDirectoryStartOffset=" + centralDirectoryStartOffset +
+				", numEntriesOnThisDisk=" + numEntriesOnThisDisk +
 				", numEntries=" + numEntries +
 				", centralDirectorySize=" + centralDirectorySize +
 				", centralDirectoryOffset=" + centralDirectoryOffset +
@@ -240,7 +240,7 @@ public class EndOfCentralDirectory implements ZipPart, ZipRead {
 		if (offset != that.offset) return false;
 		if (diskNumber != that.diskNumber) return false;
 		if (centralDirectoryStartDisk != that.centralDirectoryStartDisk) return false;
-		if (centralDirectoryStartOffset != that.centralDirectoryStartOffset) return false;
+		if (numEntriesOnThisDisk != that.numEntriesOnThisDisk) return false;
 		if (numEntries != that.numEntries) return false;
 		if (centralDirectorySize != that.centralDirectorySize) return false;
 		if (centralDirectoryOffset != that.centralDirectoryOffset) return false;
@@ -253,7 +253,7 @@ public class EndOfCentralDirectory implements ZipPart, ZipRead {
 		int result = (int) (offset ^ (offset >>> 32));
 		result = 31 * result + diskNumber;
 		result = 31 * result + centralDirectoryStartDisk;
-		result = 31 * result + centralDirectoryStartOffset;
+		result = 31 * result + numEntriesOnThisDisk;
 		result = 31 * result + numEntries;
 		result = 31 * result + (int) (centralDirectorySize ^ (centralDirectorySize >>> 32));
 		result = 31 * result + (int) (centralDirectoryOffset ^ (centralDirectoryOffset >>> 32));

@@ -78,7 +78,7 @@ public class DirectZipWriter implements ZipWriter {
 		writeIntLE(os, ZipPatterns.END_OF_CENTRAL_DIRECTORY_QUAD);
 		writeShortLE(os, end.getDiskNumber());
 		writeShortLE(os, end.getCentralDirectoryStartDisk());
-		writeShortLE(os, end.getCentralDirectoryStartOffset());
+		writeShortLE(os, end.getNumEntriesOnThisDisk());
 		writeShortLE(os, end.getNumEntries());
 		writeIntLE(os, (int) end.getCentralDirectorySize());
 		writeIntLE(os, (int) end.getCentralDirectoryOffset());

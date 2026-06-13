@@ -47,7 +47,7 @@ public final class Zip64Support {
 			// Normalize the legacy END object so downstream code can keep reading from the same model.
 			end.setDiskNumber((int) zip64Info.diskNumber());
 			end.setCentralDirectoryStartDisk((int) zip64Info.centralDirectoryStartDisk());
-			end.setCentralDirectoryStartOffset((int) zip64Info.entriesOnThisDisk());
+			end.setNumEntriesOnThisDisk((int) zip64Info.entriesOnThisDisk());
 			end.setNumEntries((int) zip64Info.entryCount());
 			end.setCentralDirectorySize(zip64Info.centralDirectorySize());
 			end.setCentralDirectoryOffset(zip64Info.centralDirectoryOffset());
